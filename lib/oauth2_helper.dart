@@ -69,16 +69,15 @@ class OAuth2Helper {
           tknResp = await refreshToken(tknResp);
         } else {
           //No refresh token, fetch a new token
-          tknResp = await fetchToken();
+          tknResp = await fetchToken(client);
         }
       }
     } else {
-      tknResp = await fetchToken();
+      tknResp = await fetchToken(client);
     }
 
     if (!tknResp.isValid()) {
-      throw Exception(
-          'Provider error ${tknResp.httpStatusCode}: ${tknResp.error}: ${tknResp.errorDescription}');
+      throw Exception('Provider error ${tknResp.httpStatusCode}: ${tknResp.error}: ${tknResp.errorDescription}');
     }
 
     if (!tknResp.isBearer()) {
@@ -94,7 +93,7 @@ class OAuth2Helper {
   }
 
   /// Fetches a new token and saves it in the storage
-  Future<AccessTokenResponse> fetchToken() async {
+  Future<AccessTokenResponse> fetchToken(OAuth2Client client) async {
     _validateAuthorizationParams();
 
     AccessTokenResponse tknResp;
@@ -139,17 +138,14 @@ class OAuth2Helper {
   }
 
   /// Performs a refresh_token request using the [refreshToken].
-  Future<AccessTokenResponse> refreshToken(
-      AccessTokenResponse curTknResp) async {
+  Future<AccessTokenResponse> refreshToken(AccessTokenResponse curTknResp) async {
     AccessTokenResponse? tknResp;
     var refreshToken = curTknResp.refreshToken!;
     try {
       tknResp = await client.refreshToken(refreshToken,
-          clientId: clientId,
-          clientSecret: clientSecret,
-          scopes: curTknResp.scope);
+          clientId: clientId, clientSecret: clientSecret, scopes: curTknResp.scope);
     } catch (_) {
-      return await fetchToken();
+      return await fetchToken(client);
     }
 
     if (tknResp.isValid()) {
@@ -166,8 +162,7 @@ class OAuth2Helper {
         //Fetch another access token
         tknResp = await getToken();
       } else {
-        throw OAuth2Exception(tknResp.error ?? 'Error',
-            errorDescription: tknResp.errorDescription);
+        throw OAuth2Exception(tknResp.error ?? 'Error', errorDescription: tknResp.errorDescription);
       }
     }
 
@@ -182,10 +177,7 @@ class OAuth2Helper {
 
     if (tknResp != null) {
       await tokenStorage.deleteToken(scopes ?? []);
-      return await client.revokeToken(tknResp,
-          clientId: clientId,
-          clientSecret: clientSecret,
-          httpClient: httpClient);
+      return await client.revokeToken(tknResp, clientId: clientId, clientSecret: clientSecret, httpClient: httpClient);
     } else {
       return OAuth2Response();
     }
@@ -198,68 +190,49 @@ class OAuth2Helper {
   /// Performs a POST request to the specified [url], adding the authorization token.
   ///
   /// If no token already exists, or if it is expired, a new one is requested.
-  Future<http.Response> post(String url,
-      {Map<String, String>? headers,
-      dynamic body,
-      http.Client? httpClient}) async {
-    return _request('POST', url,
-        headers: headers, body: body, httpClient: httpClient);
+  Future<http.Response> post(String url, {Map<String, String>? headers, dynamic body, http.Client? httpClient}) async {
+    return _request('POST', url, headers: headers, body: body, httpClient: httpClient);
   }
 
   /// Performs a PUT request to the specified [url], adding the authorization token.
   ///
   /// If no token already exists, or if it is expired, a new one is requested.
-  Future<http.Response> put(String url,
-      {Map<String, String>? headers,
-      dynamic body,
-      http.Client? httpClient}) async {
-    return _request('PUT', url,
-        headers: headers, body: body, httpClient: httpClient);
+  Future<http.Response> put(String url, {Map<String, String>? headers, dynamic body, http.Client? httpClient}) async {
+    return _request('PUT', url, headers: headers, body: body, httpClient: httpClient);
   }
 
   /// Performs a PATCH request to the specified [url], adding the authorization token.
   ///
   /// If no token already exists, or if it is expired, a new one is requested.
-  Future<http.Response> patch(String url,
-      {Map<String, String>? headers,
-      dynamic body,
-      http.Client? httpClient}) async {
-    return _request('PATCH', url,
-        headers: headers, body: body, httpClient: httpClient);
+  Future<http.Response> patch(String url, {Map<String, String>? headers, dynamic body, http.Client? httpClient}) async {
+    return _request('PATCH', url, headers: headers, body: body, httpClient: httpClient);
   }
 
   /// Performs a GET request to the specified [url], adding the authorization token.
   ///
   /// If no token already exists, or if it is expired, a new one is requested.
-  Future<http.Response> get(String url,
-      {Map<String, String>? headers, http.Client? httpClient}) async {
+  Future<http.Response> get(String url, {Map<String, String>? headers, http.Client? httpClient}) async {
     return _request('GET', url, headers: headers, httpClient: httpClient);
   }
 
   /// Performs a DELETE request to the specified [url], adding the authorization token.
   ///
   /// If no token already exists, or if it is expired, a new one is requested.
-  Future<http.Response> delete(String url,
-      {Map<String, String>? headers, http.Client? httpClient}) async {
+  Future<http.Response> delete(String url, {Map<String, String>? headers, http.Client? httpClient}) async {
     return _request('DELETE', url, headers: headers, httpClient: httpClient);
   }
 
   /// Performs a HEAD request to the specified [url], adding the authorization token.
   ///
   /// If no token already exists, or if it is expired, a new one is requested.
-  Future<http.Response> head(String url,
-      {Map<String, String>? headers,
-      dynamic body,
-      http.Client? httpClient}) async {
+  Future<http.Response> head(String url, {Map<String, String>? headers, dynamic body, http.Client? httpClient}) async {
     return _request('HEAD', url, headers: headers, httpClient: httpClient);
   }
 
   /// Common method for making http requests
   /// Tries to use a previously fetched token, otherwise fetches a new token by means of a refresh flow or by issuing a new authorization flow
   Future<http.Response> _request(String method, String url,
-      {Map<String, String>? headers,
-      dynamic body,
-      http.Client? httpClient}) async {
+      {Map<String, String>? headers, dynamic body, http.Client? httpClient}) async {
     httpClient ??= http.Client();
 
     headers ??= {};
@@ -270,14 +243,11 @@ class OAuth2Helper {
       headers!['Authorization'] = 'Bearer $accessToken';
 
       if (method == 'POST') {
-        resp = await httpClient!
-            .post(Uri.parse(url), body: body, headers: headers);
+        resp = await httpClient!.post(Uri.parse(url), body: body, headers: headers);
       } else if (method == 'PUT') {
-        resp =
-            await httpClient!.put(Uri.parse(url), body: body, headers: headers);
+        resp = await httpClient!.put(Uri.parse(url), body: body, headers: headers);
       } else if (method == 'PATCH') {
-        resp = await httpClient!
-            .patch(Uri.parse(url), body: body, headers: headers);
+        resp = await httpClient!.patch(Uri.parse(url), body: body, headers: headers);
       } else if (method == 'GET') {
         resp = await httpClient!.get(Uri.parse(url), headers: headers);
       } else if (method == 'DELETE') {
@@ -305,7 +275,7 @@ class OAuth2Helper {
         if (tknResp.hasRefreshToken()) {
           tknResp = await refreshToken(tknResp);
         } else {
-          tknResp = await fetchToken();
+          tknResp = await fetchToken(client);
         }
 
         if (tknResp.isValid()) {
@@ -323,8 +293,7 @@ class OAuth2Helper {
       throw Exception('Required "clientId" parameter not set');
     }
 
-    if (grantType == clientCredentials &&
-        (clientSecret == null || clientSecret!.isEmpty)) {
+    if (grantType == clientCredentials && (clientSecret == null || clientSecret!.isEmpty)) {
       throw Exception('Required "clientSecret" parameter not set');
     }
   }
